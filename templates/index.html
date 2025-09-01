@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tennis Doubles Scheduler</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #2c6f2f; /* Tennis court green */
+      color: white;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 { text-align: left; margin: 0 0 16px 0; }
+    .form-container {
+      margin-bottom: 20px;
+      padding: 20px;
+      background-color: #4CAF50;
+      border-radius: 8px;
+      width: 60%;
+    }
+    label { font-size: 1em; display: block; margin: 8px 0 4px; }
+    input[type="text"], input[type="number"], select, button {
+      width: 100%; padding: 10px; margin: 5px 0;
+      font-size: 1em; border-radius: 4px; border: 1px solid #ccc; box-sizing: border-box; color:#111;
+    }
+
+    /* Buttons */
+    .btn-row { display: flex; gap: 10px; margin-top: 12px; }
+    #runBtn, #resetBtn {
+      font-size: 1.05em; font-weight: 600; border: none;
+      border-radius: 6px; padding: 12px;
+      transition: background-color 0.15s ease, opacity 0.15s ease;
+    }
+    /* Run enabled */
+    #runBtn:not([disabled]) {
+      background-color: #66bb6a; color: #fff; cursor: pointer;
+    }
+    #runBtn:not([disabled]):hover { background-color: #81c784; }
+    /* Run disabled */
+    #runBtn[disabled] {
+      background-color: #8fae90; color: #f1f1f1; cursor: not-allowed; opacity: 0.85;
+      box-shadow: none;
+    }
+    /* Reset */
+    #resetBtn {
+      background-color: #b0bec5; color: #0a0a0a; cursor: pointer;
+    }
+    #resetBtn:hover { background-color: #c5d2d8; }
+
+    .table-container { margin-top: 30px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; background: rgba(255,255,255,0.05);}
+    th, td {
+      padding: 10px; text-align: left; border: 1px solid #fff; font-size: 0.95em; color: #fff;
+    }
+    th { background-color: #4CAF50; }
+    tr:nth-child(even) { background-color: #388e3c; }
+    .muted { opacity: 0.9; }
+    .error { background:#b71c1c; color:#fff; padding:10px; border-radius:6px; margin:10px 0; }
+    .targets-table input[type="number"] {
+      width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #ccc; background:#fafffa; color:#111;
+    }
+
+    /* Loading overlay */
+    #loading {
+      position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.45); z-index: 9999;
+      font-size: 1.25em; text-align: center;
+    }
+    .spinner {
+      border: 6px solid #f3f3f3; border-top: 6px solid #4CAF50; border-radius: 50%;
+      width: 48px; height: 48px; animation: spin 1s linear infinite; margin: 12px auto;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+  </style>
+</head>
+<body>
+<h1>Tennis Doubles Scheduler</h1>
+
+<div id="loading">
+  <div>
+    <div class="spinner"></div>
+    <div>Running optimizer…</div>
+  </div>
+</div>
+
+<form class="form-container" method="POST" id="mainForm" action="/">
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+  <label for="num_weeks">1) Number of weeks:</label>
+  <input type="number" id="num_weeks" name="num_weeks" min="1" value="{{ M if M else '' }}" required>
+
+  <label for="player_names">2) Player names (comma-separated):</label>
+  <input type="text" id="player_names" name="player_names"
+         value="{{ player_names | join(', ') if player_names else '' }}"
+         placeholder="e.g., megan, su, colleen, shelley, melissa, cindy" required>
+
+  <div id="targets_block" style="margin-top:16px;">
+    <label>3) Targets (weeks per player)</label>
+    <table class="targets-table">
+      <thead><tr><th style="width:60%;">Player</th><th>Target weeks</th></tr></thead>
+      <tbody id="targets_rows">
+        {% if player_names %}
+          {% for name in player_names %}
+            <tr>
+              <td class="player-cell">{{ name|trim }}</td>
+              <td>
+                <!-- Visible input named with TRIMMED player name -->
+                <input type="number" min="0" step="1"
+                       name="{{ name|trim }}" class="target-input"
+                       value="{% if custom_targets %}{{ '%.0f'|format(custom_targets.get(name|trim, 0)) }}{% else %}0{% endif %}"
+                       data-index="{{ loop.index0 }}"
+                       oninput="mirrorAndUpdate(this)">
+                <!-- Hidden mirror by index -->
+                <input type="hidden" name="t_{{ loop.index0 }}"
+                       value="{% if custom_targets %}{{ '%.0f'|format(custom_targets.get(name|trim, 0)) }}{% else %}0{% endif %}">
+              </td>
+            </tr>
+          {% endfor %}
+        {% endif %}
+      </tbody>
+    </table>
+    <div class="muted" style="margin-top:8px;">
+      Max slots = 4 × weeks. The sum of all targets cannot exceed this.
+    </div>
+    <div class="muted" id="totals_line" style="margin-top:6px;">
+      Total: <span id="total_now">0</span> (Max: <span id="max_slots">0</span>)
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button type="submit" id="runBtn">4) Run Model</button>
+    <button type="button" id="resetBtn" onclick="resetAll()">Reset</button>
+  </div>
+</form>
+
+{% if counts %}
+<div class="table-container">
+  <h2>Current Counts</h2>
+  <table>
+    <thead><tr><th>Player</th><th>Count</th><th>Deviation</th></tr></thead>
+    <tbody>
+      {% for p, c in counts.items() %}
+      <tr>
+        <td>{{ p }}</td>
+        <td>{{ c }}</td>
+        <td>{{ '%.2f'|format(deviation.get(p, 0)) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted">Objective value: {{ obj_val }}</p>
+  <p class="muted">Adjust targets above and click “Run Model” again to iterate.</p>
+</div>
+{% endif %}
+
+{% if schedule_data %}
+<div class="table-container">
+  <h2>Generated Weekly Schedule</h2>
+  <table>
+    <tr>
+      <th>Player</th>
+      {% for week_num in range(M) %}
+        <th>Week {{ week_num + 1 }}</th>
+      {% endfor %}
+    </tr>
+    <tr>
+      <td>Player 1</td>
+      {% for week in schedule_data %}
+        <td>{{ week[0] }}</td>
+      {% endfor %}
+    </tr>
+    <tr>
+      <td>Player 2</td>
+      {% for week in schedule_data %}
+        <td>{{ week[1] }}</td>
+      {% endfor %}
+    </tr>
+    <tr>
+      <td>Player 3</td>
+      {% for week in schedule_data %}
+        <td>{{ week[2] }}</td>
+      {% endfor %}
+    </tr>
+    <tr>
+      <td>Player 4</td>
+      {% for week in schedule_data %}
+        <td>{{ week[3] }}</td>
+      {% endfor %}
+    </tr>
+  </table>
+
+  <h3>Download the Schedule</h3>
+  <form class="download-form" action="/download" method="POST">
+    <input type="hidden" name="player_names" value="{{ player_names | join(',') }}">
+    <input type="hidden" name="num_weeks" value="{{ M }}">
+    <label for="file_format">Choose file format:</label>
+    <select name="file_format" id="file_format">
+      <option value="csv">CSV</option>
+      <option value="xls">XLS</option>
+      <option value="pdf">PDF</option>
+    </select>
+    <button type="submit" style="margin-top:8px;">Download</button>
+  </form>
+</div>
+{% endif %}
+
+<script>
+  const form       = document.getElementById('mainForm');
+  const namesField = document.getElementById('player_names');
+  const weeksField = document.getElementById('num_weeks');
+  const rowsBody   = document.getElementById('targets_rows');
+  const totalNow   = document.getElementById('total_now');
+  const maxSlotsEl = document.getElementById('max_slots');
+  const runBtn     = document.getElementById('runBtn');
+  const loading    = document.getElementById('loading');
+
+  /* ===== Helpers ===== */
+
+  function parseNames() {
+    const raw = namesField.value.trim();
+    if (!raw) return [];
+    return raw.split(',').map(s => s.trim()).filter(Boolean);
+  }
+
+  // Uniform integer split of 4*M across N players (remainder goes to first players)
+  function uniformDefaults(M, names) {
+    const total = 4 * M;
+    const N = Math.max(names.length, 1);
+    const base = Math.floor(total / N);
+    let rem = total % N;
+    return names.map((_, i) => base + (i < rem ? 1 : 0));
+  }
+
+  function mirrorAndUpdate(el) {
+    // Sync hidden t_i mirror for this input
+    const idx = el.getAttribute('data-index');
+    const hidden = rowsBody.querySelector(`input[type="hidden"][name="t_${idx}"]`);
+    if (hidden) hidden.value = el.value;
+    updateTotals();
+  }
+
+  function mirrorAllHidden() {
+    // Ensure every visible input has a mirrored hidden t_i updated with current value
+    rowsBody.querySelectorAll('tr').forEach((tr, i) => {
+      const inp = tr.querySelector('.target-input');
+      if (!inp) return;
+      // Enforce visible input's name = trimmed player cell text
+      const nameCell = tr.querySelector('.player-cell');
+      if (nameCell) {
+        const trimmed = nameCell.textContent.trim();
+        if (trimmed) inp.name = trimmed;
+      }
+      // Update/create hidden t_i
+      let hidden = tr.querySelector(`input[type="hidden"][name="t_${i}"]`);
+      if (!hidden) {
+        hidden = document.createElement('input');
+        hidden.type = 'hidden'; hidden.name = `t_${i}`;
+        tr.children[1].appendChild(hidden);
+      }
+      hidden.value = inp.value;
+      // Keep proper index for later edits
+      inp.setAttribute('data-index', String(i));
+    });
+  }
+
+  function rebuildTargetRows(prefill) {
+    const names = parseNames();
+    rowsBody.innerHTML = '';
+    names.forEach((name, i) => {
+      const tr  = document.createElement('tr');
+
+      const tdN = document.createElement('td');
+      tdN.className = 'player-cell';
+      tdN.textContent = name.trim();
+
+      const tdV = document.createElement('td');
+
+      const inp = document.createElement('input');
+      inp.type  = 'number';
+      inp.min   = '0';
+      inp.step  = '1';
+      inp.name  = name.trim();     // visible input named with trimmed player name
+      inp.className = 'target-input';
+      inp.value = prefill ? prefill[i] : 0;
+      inp.setAttribute('data-index', String(i));
+      inp.addEventListener('input', () => mirrorAndUpdate(inp));
+
+      const hidden = document.createElement('input');
+      hidden.type  = 'hidden';
+      hidden.name  = `t_${i}`;     // mirrored hidden by index
+      hidden.value = inp.value;
+
+      tdV.appendChild(inp);
+      tdV.appendChild(hidden);
+
+      tr.appendChild(tdN);
+      tr.appendChild(tdV);
+      rowsBody.appendChild(tr);
+    });
+  }
+
+  function updateTotals() {
+    const M = parseInt(weeksField.value || '0', 10);
+    const max = 4 * (isNaN(M) ? 0 : M);
+    if (maxSlotsEl) maxSlotsEl.textContent = max;
+
+    let total = 0;
+    rowsBody.querySelectorAll('.target-input').forEach(inp => {
+      const v = parseFloat(inp.value);
+      if (!isNaN(v)) total += v;
+    });
+    if (totalNow) totalNow.textContent = total;
+
+    // Disable/enable run button based on total
+    if (runBtn) runBtn.disabled = total > max;
+  }
+
+  function buildDefaultsIfNeeded(force = false) {
+    const names = parseNames();
+    const M = parseInt(weeksField.value || '0', 10);
+
+    if (!names.length || !M) {
+      rowsBody.innerHTML = '';
+      updateTotals();
+      return;
+    }
+
+    // If existing rows don't match names, rebuild
+    const rowCount = rowsBody.querySelectorAll('tr').length;
+    const mustRebuild = (rowCount !== names.length);
+
+    // Detect if there are any non-zero values (to avoid clobbering user inputs on initial render)
+    const hasValues = Array.from(rowsBody.querySelectorAll('.target-input'))
+      .some(inp => inp.value && inp.value !== '0');
+
+    if (force || mustRebuild || !hasValues) {
+      const defaults = uniformDefaults(M, names);
+      rebuildTargetRows(defaults);
+    }
+    updateTotals();
+  }
+
+  function normalizePlayersField() {
+    // Keep the posted player_names clean/trimmed
+    const names = parseNames();
+    namesField.value = names.join(', ');
+  }
+
+  function resetAll() {
+    // Reload to a clean GET (clears previous results/sections)
+    window.location.href = '/';
+  }
+
+  /* ===== Wire up events ===== */
+
+  // Rebuild defaults when names are actively edited (add/remove/change) or weeks change
+  namesField.addEventListener('input',  () => buildDefaultsIfNeeded(true));
+  namesField.addEventListener('change', () => buildDefaultsIfNeeded(true));
+  namesField.addEventListener('blur',   () => buildDefaultsIfNeeded(true));
+  weeksField.addEventListener('input',  () => buildDefaultsIfNeeded(true));
+
+  // Before submit: sync mirrors, validate, normalize names; show loading
+  form.addEventListener('submit', (e) => {
+    mirrorAllHidden();
+    normalizePlayersField();
+
+    // Final guard: prevent submit if total > max
+    const M = parseInt(weeksField.value || '0', 10);
+    const max = 4 * (isNaN(M) ? 0 : M);
+    let total = 0;
+    rowsBody.querySelectorAll('.target-input').forEach(inp => {
+      const v = parseFloat(inp.value);
+      if (!isNaN(v)) total += v;
+    });
+    if (total > max) {
+      e.preventDefault();
+      alert(`Total target (${total}) exceeds maximum ${max} (4 × ${M}). Reduce some values.`);
+      return false;
+    }
+
+    // Show loading overlay
+    loading.style.display = 'flex';
+    runBtn.disabled = true;
+    return true;
+  });
+
+  // On first load, if server rendered rows, recompute totals and ensure mirrors are present
+  document.addEventListener('DOMContentLoaded', () => {
+    if (rowsBody.children.length > 0) {
+      // Enforce visible input name equals trimmed player cell, and ensure hidden mirrors
+      rowsBody.querySelectorAll('tr').forEach((tr, i) => {
+        const nameCell = tr.querySelector('.player-cell');
+        const trimmed  = nameCell ? nameCell.textContent.trim() : '';
+        const inp      = tr.querySelector('.target-input');
+        if (inp) {
+          if (trimmed) inp.name = trimmed;
+          inp.setAttribute('data-index', String(i));
+          let hidden = tr.querySelector(`input[type="hidden"][name="t_${i}"]`);
+          if (!hidden) {
+            hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = `t_${i}`;
+            hidden.value = inp.value;
+            tr.children[1].appendChild(hidden);
+          }
+        }
+      });
+      // Update Max and totals
+      const M = parseInt(weeksField.value || '0', 10);
+      if (maxSlotsEl) maxSlotsEl.textContent = isNaN(M) ? 0 : (4 * M);
+      updateTotals();
+    } else {
+      buildDefaultsIfNeeded(true);
+    }
+  });
+</script>
+</body>
+</html>
