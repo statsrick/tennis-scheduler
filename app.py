@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, send_file
 import pandas as pd
-from io import BytesIO
+from io import StringIO, BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 import csv
@@ -418,17 +418,26 @@ def generate_schedule(N, M, player_names, targets=None, uniform_target=None, pai
 # File generation helpers
 # -------------------------
 def generate_csv(res):
-    output = BytesIO()
-    writer = csv.writer(output, newline="")
+    """
+    Build a CSV in memory and return a BytesIO ready for send_file().
+    """
+    sio = StringIO()  # text buffer
+    writer = csv.writer(sio, lineterminator="\n")  # set line endings explicitly
+
+    # Header
     header = ["Player/Week"] + [f"Week {i + 1}" for i in range(len(res['weeks']))]
     writer.writerow(header)
-    for i in range(4):  # 4 players per week
-        row = [f"Player {i + 1}"]
-        for week in res["weeks"]:
-            row.append(week["players"][i])
+
+    # 4 rows for players 1..4
+    for i in range(4):
+        row = [f"Player {i + 1}"] + [week["players"][i] for week in res["weeks"]]
         writer.writerow(row)
-    output.seek(0)
-    return output
+
+    # Convert to BytesIO for send_file
+    data = sio.getvalue().encode("utf-8")
+    bio = BytesIO(data)
+    bio.seek(0)
+    return bio
 
 def generate_excel(res):
     df = pd.DataFrame(columns=["Player/Week"] + [f"Week {i + 1}" for i in range(len(res['weeks']))])
