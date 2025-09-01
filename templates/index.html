@@ -196,6 +196,7 @@
                          name="{{ name|trim }}" class="target-input"
                          value="{% if custom_targets %}{{ '%.0f'|format(custom_targets.get(name|trim, 0)) }}{% else %}0{% endif %}"
                          data-index="{{ loop.index0 }}"
+                         max="{{ M if M else '' }}"
                          oninput="mirrorAndUpdate(this)">
                   <!-- Hidden mirror by index -->
                   <input type="hidden" name="t_{{ loop.index0 }}"
@@ -207,7 +208,7 @@
         </tbody>
       </table>
       <div class="muted" style="margin-top:8px;">
-        Max slots = 4 × weeks. The sum of all targets cannot exceed this.
+        Max slots = 4 × weeks. The sum of all targets cannot exceed this. Each player's max is the number of weeks.
       </div>
       <div class="muted" id="totals_line" style="margin-top:6px;">
         Total: <span id="total_now">0</span> (Max: <span id="max_slots">0</span>)
@@ -324,7 +325,19 @@
     return names.map((_, i) => base + (i < rem ? 1 : 0));
   }
 
+  // Cap a single input to weeks M
+  function clampToWeeks(el){
+    const M = parseInt(weeksField.value || '0', 10);
+    if (!M) return;
+    el.max = String(M);
+    let v = parseInt(el.value || '0', 10);
+    if (isNaN(v)) v = 0;
+    if (v > M) el.value = M;
+    if (v < 0) el.value = 0;
+  }
+
   function mirrorAndUpdate(el) {
+    clampToWeeks(el);  // enforce per-player cap on every edit
     // Sync hidden t_i mirror for this input
     const idx = el.getAttribute('data-index');
     const hidden = rowsBody.querySelector(`input[type="hidden"][name="t_${idx}"]`);
@@ -337,6 +350,7 @@
     rowsBody.querySelectorAll('tr').forEach((tr, i) => {
       const inp = tr.querySelector('.target-input');
       if (!inp) return;
+      clampToWeeks(inp); // enforce cap before submit
       // Enforce visible input's name = trimmed player cell text
       const nameCell = tr.querySelector('.player-cell');
       if (nameCell) {
@@ -358,6 +372,7 @@
 
   function rebuildTargetRows(prefill) {
     const names = parseNames();
+    const M = parseInt(weeksField.value || '0', 10) || 0;
     rowsBody.innerHTML = '';
     names.forEach((name, i) => {
       const tr  = document.createElement('tr');
@@ -374,7 +389,11 @@
       inp.step  = '1';
       inp.name  = name.trim();     // visible input named with trimmed player name
       inp.className = 'target-input';
-      inp.value = prefill ? prefill[i] : 0;
+
+      const proposed = prefill ? Number(prefill[i] || 0) : 0;
+      inp.value = Math.min(proposed, M);  // clamp initial value to M
+      inp.max   = String(M);              // HTML max
+
       inp.setAttribute('data-index', String(i));
       inp.addEventListener('input', () => mirrorAndUpdate(inp));
 
@@ -399,6 +418,7 @@
 
     let total = 0;
     rowsBody.querySelectorAll('.target-input').forEach(inp => {
+      clampToWeeks(inp); // ensure all inputs obey current M while summing
       const v = parseFloat(inp.value);
       if (!isNaN(v)) total += v;
     });
@@ -429,6 +449,9 @@
     if (force || mustRebuild || !hasValues) {
       const defaults = uniformDefaults(M, names);
       rebuildTargetRows(defaults);
+    } else {
+      // M might have changed; update max on existing inputs and clamp
+      rowsBody.querySelectorAll('.target-input').forEach(inp => clampToWeeks(inp));
     }
     updateTotals();
   }
@@ -450,6 +473,7 @@
       const holder = document.getElementById('dlTargets');
       holder.innerHTML = '';
       document.querySelectorAll('#targets_rows .target-input').forEach((inp, i) => {
+        clampToWeeks(inp); // enforce cap before download
         const nameCell = inp.closest('tr').querySelector('.player-cell');
         const player = nameCell ? nameCell.textContent.trim() : `p_${i}`;
 
@@ -475,7 +499,12 @@
   namesField.addEventListener('input',  () => buildDefaultsIfNeeded(true));
   namesField.addEventListener('change', () => buildDefaultsIfNeeded(true));
   namesField.addEventListener('blur',   () => buildDefaultsIfNeeded(true));
-  weeksField.addEventListener('input',  () => buildDefaultsIfNeeded(true));
+  weeksField.addEventListener('input',  () => {
+    buildDefaultsIfNeeded(true);
+    // also clamp all existing inputs if not rebuilt
+    document.querySelectorAll('.target-input').forEach(clampToWeeks);
+    updateTotals();
+  });
 
   // Before submit: sync mirrors, validate, normalize names; show loading
   const formEl = document.getElementById('mainForm');
@@ -488,6 +517,7 @@
     const max = 4 * (isNaN(M) ? 0 : M);
     let total = 0;
     rowsBody.querySelectorAll('.target-input').forEach(inp => {
+      clampToWeeks(inp); // enforce cap before submit
       const v = parseFloat(inp.value);
       if (!isNaN(v)) total += v;
     });
@@ -506,7 +536,7 @@
   // On first load, if server rendered rows, recompute totals and ensure mirrors are present
   document.addEventListener('DOMContentLoaded', () => {
     if (rowsBody.children.length > 0) {
-      // Enforce visible input name equals trimmed player cell, and ensure hidden mirrors
+      // Enforce visible input name equals trimmed player cell, set max, and ensure hidden mirrors
       rowsBody.querySelectorAll('tr').forEach((tr, i) => {
         const nameCell = tr.querySelector('.player-cell');
         const trimmed  = nameCell ? nameCell.textContent.trim() : '';
@@ -514,6 +544,7 @@
         if (inp) {
           if (trimmed) inp.name = trimmed;
           inp.setAttribute('data-index', String(i));
+          clampToWeeks(inp); // set max and clamp
           let hidden = tr.querySelector(`input[type="hidden"][name="t_${i}"]`);
           if (!hidden) {
             hidden = document.createElement('input');
