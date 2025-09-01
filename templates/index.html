@@ -5,18 +5,69 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Tennis Doubles Scheduler</title>
   <style>
+    :root{
+      --court-green:#2c6f2f;
+      --form-green:#4CAF50;
+      --line:#ffffff;
+      --ball:#fffb79;
+      --ball-shade:#d6d54f;
+    }
+
+    /* Base */
+    html, body { height: 100%; }
     body {
       font-family: Arial, sans-serif;
-      background-color: #2c6f2f; /* Tennis court green */
+      background-color: var(--court-green);
       color: white;
       margin: 0;
+      padding: 0; /* background layers sit full-bleed; content adds its own padding */
+      overflow-x: hidden;
+    }
+
+    /* Background layers (behind everything, no interaction) */
+    .bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+    /* Court lines as an SVG overlay */
+    .court {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0.22; /* subtle */
+    }
+    /* Soft tennis balls sprinkled around using layered radial-gradients */
+    .balls {
+      position: absolute;
+      inset: 0;
+      opacity: 0.22;
+      background-repeat: no-repeat;
+      background-image:
+        radial-gradient(circle at 8% 18%,  var(--ball) 0 14px, var(--ball-shade) 15px, transparent 16px),
+        radial-gradient(circle at 85% 28%, var(--ball) 0 12px, var(--ball-shade) 13px, transparent 14px),
+        radial-gradient(circle at 28% 78%, var(--ball) 0 11px, var(--ball-shade) 12px, transparent 13px),
+        radial-gradient(circle at 62% 66%, var(--ball) 0 16px, var(--ball-shade) 17px, transparent 18px),
+        radial-gradient(circle at 92% 82%, var(--ball) 0 10px, var(--ball-shade) 11px, transparent 12px),
+        radial-gradient(circle at 40% 14%, var(--ball) 0 13px, var(--ball-shade) 14px, transparent 15px);
+      filter: drop-shadow(0 1px 1px rgba(0,0,0,.25));
+    }
+
+    /* Foreground content wrapper */
+    .content {
+      position: relative;
+      z-index: 1;
       padding: 20px;
     }
+
     h1 { text-align: left; margin: 0 0 16px 0; }
+
     .form-container {
       margin-bottom: 20px;
       padding: 20px;
-      background-color: #4CAF50;
+      background-color: var(--form-green);
       border-radius: 8px;
       width: 60%;
     }
@@ -54,7 +105,7 @@
     th, td {
       padding: 10px; text-align: left; border: 1px solid #fff; font-size: 0.95em; color: #fff;
     }
-    th { background-color: #4CAF50; }
+    th { background-color: var(--form-green); }
     tr:nth-child(even) { background-color: #388e3c; }
     .muted { opacity: 0.9; }
     .error { background:#b71c1c; color:#fff; padding:10px; border-radius:6px; margin:10px 0; }
@@ -73,138 +124,177 @@
       width: 48px; height: 48px; animation: spin 1s linear infinite; margin: 12px auto;
     }
     @keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+
+    /* Responsive: widen form to 100% on narrow screens */
+    @media (max-width: 900px){
+      .form-container { width: 100%; }
+    }
   </style>
 </head>
 <body>
-<h1>Tennis Doubles Scheduler</h1>
 
-<div id="loading">
-  <div>
-    <div class="spinner"></div>
-    <div>Running optimizer…</div>
-  </div>
+<!-- Background layers -->
+<div class="bg" aria-hidden="true">
+  <!-- Court lines (rough tennis court layout) -->
+  <svg class="court" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice">
+    <!-- Outer court rectangle -->
+    <rect x="8" y="8" width="84" height="84" fill="none" stroke="white" stroke-width="2.5"/>
+    <!-- Baselines -->
+    <line x1="8" y1="8" x2="92" y2="8" stroke="white" stroke-width="2"/>
+    <line x1="8" y1="92" x2="92" y2="92" stroke="white" stroke-width="2"/>
+    <!-- Singles sidelines (approx) -->
+    <line x1="20" y1="8" x2="20" y2="92" stroke="white" stroke-width="2"/>
+    <line x1="80" y1="8" x2="80" y2="92" stroke="white" stroke-width="2"/>
+    <!-- Service lines -->
+    <line x1="20" y1="36" x2="80" y2="36" stroke="white" stroke-width="2"/>
+    <line x1="20" y1="64" x2="80" y2="64" stroke="white" stroke-width="2"/>
+    <!-- Center service line -->
+    <line x1="50" y1="36" x2="50" y2="64" stroke="white" stroke-width="2"/>
+    <!-- Center marks on baselines -->
+    <line x1="50" y1="8"  x2="50" y2="11" stroke="white" stroke-width="2"/>
+    <line x1="50" y1="89" x2="50" y2="92" stroke="white" stroke-width="2"/>
+  </svg>
+
+  <!-- Tennis balls sprinkled -->
+  <div class="balls"></div>
 </div>
 
-<form class="form-container" method="POST" id="mainForm" action="/">
-  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+<!-- Foreground content -->
+<div class="content">
+  <h1>Tennis Doubles Scheduler</h1>
 
-  <label for="num_weeks">1) Number of weeks:</label>
-  <input type="number" id="num_weeks" name="num_weeks" min="1" value="{{ M if M else '' }}" required>
+  <div id="loading">
+    <div>
+      <div class="spinner"></div>
+      <div>Running optimizer…</div>
+    </div>
+  </div>
 
-  <label for="player_names">2) Player names (comma-separated):</label>
-  <input type="text" id="player_names" name="player_names"
-         value="{{ player_names | join(', ') if player_names else '' }}"
-         placeholder="e.g., megan, su, colleen, shelley, melissa, cindy" required>
+  <form class="form-container" method="POST" id="mainForm" action="/">
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
 
-  <div id="targets_block" style="margin-top:16px;">
-    <label>3) Targets (weeks per player)</label>
-    <table class="targets-table">
-      <thead><tr><th style="width:60%;">Player</th><th>Target weeks</th></tr></thead>
-      <tbody id="targets_rows">
-        {% if player_names %}
-          {% for name in player_names %}
-            <tr>
-              <td class="player-cell">{{ name|trim }}</td>
-              <td>
-                <!-- Visible input named with TRIMMED player name -->
-                <input type="number" min="0" step="1"
-                       name="{{ name|trim }}" class="target-input"
-                       value="{% if custom_targets %}{{ '%.0f'|format(custom_targets.get(name|trim, 0)) }}{% else %}0{% endif %}"
-                       data-index="{{ loop.index0 }}"
-                       oninput="mirrorAndUpdate(this)">
-                <!-- Hidden mirror by index -->
-                <input type="hidden" name="t_{{ loop.index0 }}"
-                       value="{% if custom_targets %}{{ '%.0f'|format(custom_targets.get(name|trim, 0)) }}{% else %}0{% endif %}">
-              </td>
-            </tr>
-          {% endfor %}
-        {% endif %}
+    <label for="num_weeks">1) Number of weeks:</label>
+    <input type="number" id="num_weeks" name="num_weeks" min="1" value="{{ M if M else '' }}" required>
+
+    <label for="player_names">2) Player names (comma-separated):</label>
+    <input type="text" id="player_names" name="player_names"
+           value="{{ player_names | join(', ') if player_names else '' }}"
+           placeholder="e.g., megan, su, colleen, shelley, melissa, cindy" required>
+
+    <div id="targets_block" style="margin-top:16px;">
+      <label>3) Targets (weeks per player)</label>
+      <table class="targets-table">
+        <thead><tr><th style="width:60%;">Player</th><th>Target weeks</th></tr></thead>
+        <tbody id="targets_rows">
+          {% if player_names %}
+            {% for name in player_names %}
+              <tr>
+                <td class="player-cell">{{ name|trim }}</td>
+                <td>
+                  <!-- Visible input named with TRIMMED player name -->
+                  <input type="number" min="0" step="1"
+                         name="{{ name|trim }}" class="target-input"
+                         value="{% if custom_targets %}{{ '%.0f'|format(custom_targets.get(name|trim, 0)) }}{% else %}0{% endif %}"
+                         data-index="{{ loop.index0 }}"
+                         oninput="mirrorAndUpdate(this)">
+                  <!-- Hidden mirror by index -->
+                  <input type="hidden" name="t_{{ loop.index0 }}"
+                         value="{% if custom_targets %}{{ '%.0f'|format(custom_targets.get(name|trim, 0)) }}{% else %}0{% endif %}">
+                </td>
+              </tr>
+            {% endfor %}
+          {% endif %}
+        </tbody>
+      </table>
+      <div class="muted" style="margin-top:8px;">
+        Max slots = 4 × weeks. The sum of all targets cannot exceed this.
+      </div>
+      <div class="muted" id="totals_line" style="margin-top:6px;">
+        Total: <span id="total_now">0</span> (Max: <span id="max_slots">0</span>)
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button type="submit" id="runBtn">4) Run Model</button>
+      <button type="button" id="resetBtn" onclick="resetAll()">Reset</button>
+    </div>
+  </form>
+
+  {% if counts %}
+  <div class="table-container">
+    <h2>Current Counts</h2>
+    <table>
+      <thead><tr><th>Player</th><th>Count</th><th>Deviation</th></tr></thead>
+      <tbody>
+        {# ENSURE the order matches Targets: iterate player_names, look up counts/deviation #}
+        {% for name in player_names %}
+        <tr>
+          <td>{{ name }}</td>
+          <td>{{ counts.get(name, 0) }}</td>
+          <td>{{ '%.2f'|format(deviation.get(name, 0)) }}</td>
+        </tr>
+        {% endfor %}
       </tbody>
     </table>
-    <div class="muted" style="margin-top:8px;">
-      Max slots = 4 × weeks. The sum of all targets cannot exceed this.
-    </div>
-    <div class="muted" id="totals_line" style="margin-top:6px;">
-      Total: <span id="total_now">0</span> (Max: <span id="max_slots">0</span>)
-    </div>
+    <p class="muted">Objective value: {{ obj_val }}</p>
+    <p class="muted">Adjust targets above and click “Run Model” again to iterate.</p>
   </div>
+  {% endif %}
 
-  <div class="btn-row">
-    <button type="submit" id="runBtn">4) Run Model</button>
-    <button type="button" id="resetBtn" onclick="resetAll()">Reset</button>
-  </div>
-</form>
-
-{% if counts %}
-<div class="table-container">
-  <h2>Current Counts</h2>
-  <table>
-    <thead><tr><th>Player</th><th>Count</th><th>Deviation</th></tr></thead>
-    <tbody>
-      {% for p, c in counts.items() %}
+  {% if schedule_data %}
+  <div class="table-container">
+    <h2>Generated Weekly Schedule</h2>
+    <table>
       <tr>
-        <td>{{ p }}</td>
-        <td>{{ c }}</td>
-        <td>{{ '%.2f'|format(deviation.get(p, 0)) }}</td>
+        <th>Player</th>
+        {% for week_num in range(M) %}
+          <th>Week {{ week_num + 1 }}</th>
+        {% endfor %}
       </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  <p class="muted">Objective value: {{ obj_val }}</p>
-  <p class="muted">Adjust targets above and click “Run Model” again to iterate.</p>
-</div>
-{% endif %}
+      <tr>
+        <td>Player 1</td>
+        {% for week in schedule_data %}
+          <td>{{ week[0] }}</td>
+        {% endfor %}
+      </tr>
+      <tr>
+        <td>Player 2</td>
+        {% for week in schedule_data %}
+          <td>{{ week[1] }}</td>
+        {% endfor %}
+      </tr>
+      <tr>
+        <td>Player 3</td>
+        {% for week in schedule_data %}
+          <td>{{ week[2] }}</td>
+        {% endfor %}
+      </tr>
+      <tr>
+        <td>Player 4</td>
+        {% for week in schedule_data %}
+          <td>{{ week[3] }}</td>
+        {% endfor %}
+      </tr>
+    </table>
 
-{% if schedule_data %}
-<div class="table-container">
-  <h2>Generated Weekly Schedule</h2>
-  <table>
-    <tr>
-      <th>Player</th>
-      {% for week_num in range(M) %}
-        <th>Week {{ week_num + 1 }}</th>
-      {% endfor %}
-    </tr>
-    <tr>
-      <td>Player 1</td>
-      {% for week in schedule_data %}
-        <td>{{ week[0] }}</td>
-      {% endfor %}
-    </tr>
-    <tr>
-      <td>Player 2</td>
-      {% for week in schedule_data %}
-        <td>{{ week[1] }}</td>
-      {% endfor %}
-    </tr>
-    <tr>
-      <td>Player 3</td>
-      {% for week in schedule_data %}
-        <td>{{ week[2] }}</td>
-      {% endfor %}
-    </tr>
-    <tr>
-      <td>Player 4</td>
-      {% for week in schedule_data %}
-        <td>{{ week[3] }}</td>
-      {% endfor %}
-    </tr>
-  </table>
-
-  <h3>Download the Schedule</h3>
-  <form class="download-form" action="/download" method="POST">
-    <input type="hidden" name="player_names" value="{{ player_names | join(',') }}">
-    <input type="hidden" name="num_weeks" value="{{ M }}">
-    <label for="file_format">Choose file format:</label>
-    <select name="file_format" id="file_format">
-      <option value="csv">CSV</option>
-      <option value="xls">XLS</option>
-      <option value="pdf">PDF</option>
-    </select>
-    <button type="submit" style="margin-top:8px;">Download</button>
-  </form>
-</div>
-{% endif %}
+    <h3>Download the Schedule</h3>
+    <form class="download-form" action="/download" method="POST" id="downloadForm">
+      <input type="hidden" name="player_names" value="{{ player_names | join(',') }}">
+      <input type="hidden" name="num_weeks" value="{{ M }}">
+      <label for="file_format">Choose file format:</label>
+      <select name="file_format" id="file_format">
+        <!-- Excel first (default) -->
+        <option value="xls">Excel (XLSX)</option>
+        <option value="csv">CSV</option>
+        <option value="pdf">PDF</option>
+      </select>
+      <!-- targets get mirrored here on submit -->
+      <div id="dlTargets"></div>
+      <button type="submit" style="margin-top:8px;">Download</button>
+    </form>
+  </div>
+  {% endif %}
+</div> <!-- /content -->
 
 <script>
   const form       = document.getElementById('mainForm');
@@ -215,6 +305,7 @@
   const maxSlotsEl = document.getElementById('max_slots');
   const runBtn     = document.getElementById('runBtn');
   const loading    = document.getElementById('loading');
+  const dlForm     = document.getElementById('downloadForm');
 
   /* ===== Helpers ===== */
 
@@ -353,6 +444,31 @@
     window.location.href = '/';
   }
 
+  // Inject current targets into download form before submitting it
+  if (dlForm) {
+    dlForm.addEventListener('submit', () => {
+      const holder = document.getElementById('dlTargets');
+      holder.innerHTML = '';
+      document.querySelectorAll('#targets_rows .target-input').forEach((inp, i) => {
+        const nameCell = inp.closest('tr').querySelector('.player-cell');
+        const player = nameCell ? nameCell.textContent.trim() : `p_${i}`;
+
+        const hByName = document.createElement('input');
+        hByName.type = 'hidden';
+        hByName.name = player;
+        hByName.value = inp.value || 0;
+
+        const hByIdx = document.createElement('input');
+        hByIdx.type = 'hidden';
+        hByIdx.name = `t_${i}`;
+        hByIdx.value = inp.value || 0;
+
+        holder.appendChild(hByName);
+        holder.appendChild(hByIdx);
+      });
+    });
+  }
+
   /* ===== Wire up events ===== */
 
   // Rebuild defaults when names are actively edited (add/remove/change) or weeks change
@@ -362,7 +478,8 @@
   weeksField.addEventListener('input',  () => buildDefaultsIfNeeded(true));
 
   // Before submit: sync mirrors, validate, normalize names; show loading
-  form.addEventListener('submit', (e) => {
+  const formEl = document.getElementById('mainForm');
+  formEl.addEventListener('submit', (e) => {
     mirrorAllHidden();
     normalizePlayersField();
 
