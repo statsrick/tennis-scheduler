@@ -16,12 +16,13 @@
     /* Base */
     html, body { height: 100%; }
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background-color: var(--court-green);
       color: white;
       margin: 0;
-      padding: 0; /* background layers sit full-bleed; content adds its own padding */
+      padding: 0;
       overflow-x: hidden;
+      position: relative;
     }
 
     /* Background layers (behind everything, no interaction) */
@@ -31,103 +32,348 @@
       z-index: 0;
       pointer-events: none;
     }
+    
     /* Court lines as an SVG overlay */
     .court {
       position: absolute;
       inset: 0;
       width: 100%;
       height: 100%;
-      opacity: 0.22; /* subtle */
+      opacity: 0.3;
     }
-    /* Soft tennis balls sprinkled around using layered radial-gradients */
-    .balls {
+    
+    /* Tennis balls with seam pattern */
+    .tennis-ball {
       position: absolute;
-      inset: 0;
-      opacity: 0.22;
-      background-repeat: no-repeat;
-      background-image:
-        radial-gradient(circle at 8% 18%,  var(--ball) 0 14px, var(--ball-shade) 15px, transparent 16px),
-        radial-gradient(circle at 85% 28%, var(--ball) 0 12px, var(--ball-shade) 13px, transparent 14px),
-        radial-gradient(circle at 28% 78%, var(--ball) 0 11px, var(--ball-shade) 12px, transparent 13px),
-        radial-gradient(circle at 62% 66%, var(--ball) 0 16px, var(--ball-shade) 17px, transparent 18px),
-        radial-gradient(circle at 92% 82%, var(--ball) 0 10px, var(--ball-shade) 11px, transparent 12px),
-        radial-gradient(circle at 40% 14%, var(--ball) 0 13px, var(--ball-shade) 14px, transparent 15px);
-      filter: drop-shadow(0 1px 1px rgba(0,0,0,.25));
+      width: 40px;
+      height: 40px;
+      background: radial-gradient(circle at 35% 35%, #fcff6c, #d4d645);
+      border-radius: 50%;
+      box-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+      opacity: 0.3;
     }
+    
+    .tennis-ball::before,
+    .tennis-ball::after {
+      content: '';
+      position: absolute;
+      border: 2px solid rgba(255,255,255,0.8);
+      border-radius: 50%;
+    }
+    
+    .tennis-ball::before {
+      width: 36px;
+      height: 20px;
+      top: -2px;
+      left: 0;
+      border-bottom: none;
+      transform: rotate(-30deg);
+    }
+    
+    .tennis-ball::after {
+      width: 36px;
+      height: 20px;
+      bottom: -2px;
+      left: 0;
+      border-top: none;
+      transform: rotate(-30deg);
+    }
+    
+    .ball-1 { top: 10%; left: 8%; transform: rotate(45deg); }
+    .ball-2 { top: 25%; right: 15%; transform: rotate(-20deg); width: 35px; height: 35px; }
+    .ball-3 { bottom: 20%; left: 25%; transform: rotate(120deg); }
+    .ball-4 { top: 60%; right: 35%; transform: rotate(-60deg); width: 45px; height: 45px; }
+    .ball-5 { bottom: 35%; right: 10%; transform: rotate(200deg); width: 38px; height: 38px; }
+    .ball-6 { top: 15%; left: 40%; transform: rotate(90deg); }
 
     /* Foreground content wrapper */
     .content {
       position: relative;
       z-index: 1;
-      padding: 20px;
+      padding: 30px;
+      max-width: 1400px;
+      margin: 0 auto;
     }
 
-    h1 { text-align: left; margin: 0 0 16px 0; }
+    h1 { 
+      text-align: center; 
+      margin: 0 0 30px 0; 
+      font-size: 2.5em;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+      letter-spacing: 1px;
+    }
+
+    h2, h3 {
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    }
 
     .form-container {
-      margin-bottom: 20px;
-      padding: 20px;
-      background-color: var(--form-green);
-      border-radius: 8px;
-      width: 60%;
+      margin-bottom: 30px;
+      padding: 25px;
+      background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+      backdrop-filter: blur(5px);
+      width: 65%;
+      margin-left: auto;
+      margin-right: auto;
     }
-    label { font-size: 1em; display: block; margin: 8px 0 4px; }
-    input[type="text"], input[type="number"], select, button {
-      width: 100%; padding: 10px; margin: 5px 0;
-      font-size: 1em; border-radius: 4px; border: 1px solid #ccc; box-sizing: border-box; color:#111;
+    
+    label { 
+      font-size: 1.1em; 
+      display: block; 
+      margin: 12px 0 6px; 
+      font-weight: 500;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+    }
+    
+    input[type="text"], input[type="number"], select {
+      width: 100%; 
+      padding: 12px; 
+      margin: 8px 0;
+      font-size: 1em; 
+      border-radius: 6px; 
+      border: 2px solid transparent;
+      box-sizing: border-box; 
+      color:#333;
+      background: rgba(255,255,255,0.95);
+      transition: all 0.3s ease;
+    }
+
+    input[type="text"]:focus, input[type="number"]:focus, select:focus {
+      outline: none;
+      border-color: var(--ball);
+      box-shadow: 0 0 8px rgba(255,251,121,0.5);
+      transform: translateY(-1px);
     }
 
     /* Buttons */
-    .btn-row { display: flex; gap: 10px; margin-top: 12px; }
-    #runBtn, #resetBtn {
-      font-size: 1.05em; font-weight: 600; border: none;
-      border-radius: 6px; padding: 12px;
-      transition: background-color 0.15s ease, opacity 0.15s ease;
+    .btn-row { 
+      display: flex; 
+      gap: 15px; 
+      margin-top: 20px; 
+      justify-content: center;
     }
-    /* Run enabled */
+    
+    button {
+      font-size: 1.1em; 
+      font-weight: 600; 
+      border: none;
+      border-radius: 8px; 
+      padding: 14px 28px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+
     #runBtn:not([disabled]) {
-      background-color: #66bb6a; color: #fff; cursor: pointer;
+      background: linear-gradient(135deg, #66bb6a 0%, #4CAF50 100%);
+      color: #fff;
     }
-    #runBtn:not([disabled]):hover { background-color: #81c784; }
-    /* Run disabled */
+    
+    #runBtn:not([disabled]):hover { 
+      background: linear-gradient(135deg, #81c784 0%, #66bb6a 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+    }
+    
     #runBtn[disabled] {
-      background-color: #8fae90; color: #f1f1f1; cursor: not-allowed; opacity: 0.85;
+      background: linear-gradient(135deg, #8fae90 0%, #7a997b 100%);
+      color: #e0e0e0; 
+      cursor: not-allowed; 
+      opacity: 0.7;
       box-shadow: none;
     }
-    /* Reset */
+    
     #resetBtn {
-      background-color: #b0bec5; color: #0a0a0a; cursor: pointer;
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+      color: #fff;
     }
-    #resetBtn:hover { background-color: #c5d2d8; }
+    
+    #resetBtn:hover { 
+      background: linear-gradient(135deg, #ff8787 0%, #ff6b6b 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+    }
 
-    .table-container { margin-top: 30px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; background: rgba(255,255,255,0.05);}
-    th, td {
-      padding: 10px; text-align: left; border: 1px solid #fff; font-size: 0.95em; color: #fff;
+    button[type="submit"]:not(#runBtn) {
+      background: linear-gradient(135deg, #5c9ead 0%, #4a8b9c 100%);
+      color: white;
+      padding: 10px 20px;
+      margin-top: 10px;
     }
-    th { background-color: var(--form-green); }
-    tr:nth-child(even) { background-color: #388e3c; }
-    .muted { opacity: 0.9; }
-    .error { background:#b71c1c; color:#fff; padding:10px; border-radius:6px; margin:10px 0; }
+
+    button[type="submit"]:not(#runBtn):hover {
+      background: linear-gradient(135deg, #6fb0c0 0%, #5c9ead 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+    }
+
+    .table-container { 
+      margin-top: 40px;
+      background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+      backdrop-filter: blur(5px);
+    }
+    
+    table { 
+      width: 100%; 
+      border-collapse: separate;
+      border-spacing: 0;
+      margin-top: 15px; 
+      background: rgba(255,255,255,0.95);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    
+    th, td {
+      padding: 12px; 
+      text-align: left; 
+      border-bottom: 1px solid rgba(0,0,0,0.1);
+      font-size: 0.95em; 
+      color: #333;
+    }
+    
+    th { 
+      background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+      color: white;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-size: 0.9em;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+    }
+    
+    tr:nth-child(even) { 
+      background-color: rgba(76, 175, 80, 0.1);
+    }
+
+    tr:hover {
+      background-color: rgba(76, 175, 80, 0.2);
+      transition: background-color 0.3s ease;
+    }
+    
+    .table-container h2, .table-container h3 {
+      color: white;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .table-container p {
+      color: white;
+    }
+
+    .muted { 
+      opacity: 0.85; 
+      font-style: italic;
+      margin-top: 10px;
+    }
+    
+    .error { 
+      background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
+      color:#fff; 
+      padding:12px; 
+      border-radius:8px; 
+      margin:15px 0; 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      font-weight: 500;
+    }
+    
     .targets-table input[type="number"] {
-      width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #ccc; background:#fafffa; color:#111;
+      width: 100%; 
+      padding: 8px; 
+      border-radius: 6px; 
+      border: 2px solid transparent;
+      background: rgba(255,255,255,0.95);
+      color:#333;
+      transition: all 0.3s ease;
+    }
+
+    .targets-table input[type="number"]:focus {
+      outline: none;
+      border-color: var(--ball);
+      box-shadow: 0 0 8px rgba(255,251,121,0.5);
+    }
+
+    #targets_block {
+      margin-top: 20px;
+      padding: 20px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 8px;
+    }
+
+    #totals_line {
+      font-weight: 600;
+      font-size: 1.05em;
+      color: var(--ball);
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    }
+
+    .download-form {
+      margin-top: 20px;
+      padding: 20px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 8px;
     }
 
     /* Loading overlay */
     #loading {
-      position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
-      background: rgba(0,0,0,0.45); z-index: 9999;
-      font-size: 1.25em; text-align: center;
+      position: fixed; 
+      inset: 0; 
+      display: none; 
+      align-items: center; 
+      justify-content: center;
+      background: rgba(0,0,0,0.7); 
+      z-index: 9999;
+      font-size: 1.3em; 
+      text-align: center;
+      backdrop-filter: blur(5px);
     }
+    
     .spinner {
-      border: 6px solid #f3f3f3; border-top: 6px solid #4CAF50; border-radius: 50%;
-      width: 48px; height: 48px; animation: spin 1s linear infinite; margin: 12px auto;
+      border: 6px solid rgba(255,255,255,0.3); 
+      border-top: 6px solid var(--ball); 
+      border-radius: 50%;
+      width: 60px; 
+      height: 60px; 
+      animation: spin 1s linear infinite; 
+      margin: 20px auto;
+      box-shadow: 0 0 20px rgba(255,251,121,0.5);
     }
-    @keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+    
+    @keyframes spin { 
+      0% { transform: rotate(0deg);} 
+      100% { transform: rotate(360deg);} 
+    }
 
-    /* Responsive: widen form to 100% on narrow screens */
+    /* Responsive */
     @media (max-width: 900px){
-      .form-container { width: 100%; }
+      .form-container { 
+        width: 90%; 
+      }
+      h1 {
+        font-size: 2em;
+      }
+      .content {
+        padding: 20px;
+      }
+    }
+
+    @media (max-width: 600px){
+      .form-container { 
+        width: 100%; 
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+      button {
+        padding: 12px 20px;
+        font-size: 1em;
+      }
     }
   </style>
 </head>
@@ -135,33 +381,42 @@
 
 <!-- Background layers -->
 <div class="bg" aria-hidden="true">
-  <!-- Court lines (rough tennis court layout) -->
+  <!-- Court lines (tennis court layout) -->
   <svg class="court" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice">
     <!-- Outer court rectangle -->
-    <rect x="8" y="8" width="84" height="84" fill="none" stroke="white" stroke-width="2.5"/>
-    <!-- Baselines -->
-    <line x1="8" y1="8" x2="92" y2="8" stroke="white" stroke-width="2"/>
-    <line x1="8" y1="92" x2="92" y2="92" stroke="white" stroke-width="2"/>
-    <!-- Singles sidelines (approx) -->
-    <line x1="20" y1="8" x2="20" y2="92" stroke="white" stroke-width="2"/>
-    <line x1="80" y1="8" x2="80" y2="92" stroke="white" stroke-width="2"/>
+    <rect x="5" y="10" width="90" height="80" fill="none" stroke="white" stroke-width="2.5"/>
+    
+    <!-- Singles sidelines -->
+    <line x1="17" y1="10" x2="17" y2="90" stroke="white" stroke-width="2"/>
+    <line x1="83" y1="10" x2="83" y2="90" stroke="white" stroke-width="2"/>
+    
     <!-- Service lines -->
-    <line x1="20" y1="36" x2="80" y2="36" stroke="white" stroke-width="2"/>
-    <line x1="20" y1="64" x2="80" y2="64" stroke="white" stroke-width="2"/>
+    <line x1="17" y1="35" x2="83" y2="35" stroke="white" stroke-width="2"/>
+    <line x1="17" y1="65" x2="83" y2="65" stroke="white" stroke-width="2"/>
+    
     <!-- Center service line -->
-    <line x1="50" y1="36" x2="50" y2="64" stroke="white" stroke-width="2"/>
+    <line x1="50" y1="35" x2="50" y2="65" stroke="white" stroke-width="2"/>
+    
+    <!-- Net (center line) -->
+    <line x1="5" y1="50" x2="95" y2="50" stroke="white" stroke-width="3" stroke-dasharray="2,1" opacity="0.8"/>
+    
     <!-- Center marks on baselines -->
-    <line x1="50" y1="8"  x2="50" y2="11" stroke="white" stroke-width="2"/>
-    <line x1="50" y1="89" x2="50" y2="92" stroke="white" stroke-width="2"/>
+    <line x1="50" y1="10" x2="50" y2="13" stroke="white" stroke-width="2"/>
+    <line x1="50" y1="87" x2="50" y2="90" stroke="white" stroke-width="2"/>
   </svg>
 
-  <!-- Tennis balls sprinkled -->
-  <div class="balls"></div>
+  <!-- Tennis balls with seam pattern -->
+  <div class="tennis-ball ball-1"></div>
+  <div class="tennis-ball ball-2"></div>
+  <div class="tennis-ball ball-3"></div>
+  <div class="tennis-ball ball-4"></div>
+  <div class="tennis-ball ball-5"></div>
+  <div class="tennis-ball ball-6"></div>
 </div>
 
 <!-- Foreground content -->
 <div class="content">
-  <h1>Tennis Doubles Scheduler</h1>
+  <h1>🎾 Tennis Doubles Scheduler 🎾</h1>
 
   <div id="loading">
     <div>
@@ -181,7 +436,7 @@
            value="{{ player_names | join(', ') if player_names else '' }}"
            placeholder="e.g., megan, su, colleen, shelley, melissa, cindy" required>
 
-    <div id="targets_block" style="margin-top:16px;">
+    <div id="targets_block">
       <label>3) Targets (weeks per player)</label>
       <table class="targets-table">
         <thead><tr><th style="width:60%;">Player</th><th>Target weeks</th></tr></thead>
@@ -207,11 +462,11 @@
           {% endif %}
         </tbody>
       </table>
-      <div class="muted" style="margin-top:8px;">
+      <div class="muted">
         Max slots = 4 × weeks. The sum of all targets cannot exceed this. Each player's max is the number of weeks.
       </div>
-      <div class="muted" id="totals_line" style="margin-top:6px;">
-        Total: <span id="total_now">0</span> (Max: <span id="max_slots">0</span>)
+      <div id="totals_line">
+        Total: <span id="total_now">0</span> / <span id="max_slots">0</span>
       </div>
     </div>
 
@@ -238,7 +493,7 @@
       </tbody>
     </table>
     <p class="muted">Objective value: {{ obj_val }}</p>
-    <p class="muted">Adjust targets above and click “Run Model” again to iterate.</p>
+    <p class="muted">Adjust targets above and click "Run Model" again to iterate.</p>
   </div>
   {% endif %}
 
@@ -291,7 +546,7 @@
       </select>
       <!-- targets get mirrored here on submit -->
       <div id="dlTargets"></div>
-      <button type="submit" style="margin-top:8px;">Download</button>
+      <button type="submit">Download Schedule</button>
     </form>
   </div>
   {% endif %}

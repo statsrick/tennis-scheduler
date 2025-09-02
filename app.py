@@ -204,7 +204,7 @@ def optimize_doubles_schedule(
     targets: Optional[Dict[str, float]] = None,
     uniform_target: Optional[float] = None,
     pair_penalty: float = 0.0,      # set <=0 to disable pair binaries for speed
-    seed: Optional[int] = 42,
+    seed: Optional[int] = 0,
     msg: int = 0,
     time_limit: int = 20,           # seconds
     frac_gap: float = 0.01,         # 1% optimality gap
@@ -401,7 +401,7 @@ def generate_schedule(N, M, player_names, targets=None, uniform_target=None, pai
         targets=targets,
         uniform_target=None,
         pair_penalty=pair_penalty,     # 0 disables pair binaries (fast)
-        seed=23748,
+        seed=0,
         msg=0,
         time_limit=20,
         frac_gap=0.01,
