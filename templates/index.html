@@ -220,11 +220,38 @@
       backdrop-filter: blur(5px);
     }
     
+    /* Scrollable table wrapper */
+    .table-wrapper {
+      overflow-x: auto;
+      margin-top: 15px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    
+    /* Custom scrollbar styling */
+    .table-wrapper::-webkit-scrollbar {
+      height: 10px;
+    }
+    
+    .table-wrapper::-webkit-scrollbar-track {
+      background: rgba(255,255,255,0.1);
+      border-radius: 5px;
+    }
+    
+    .table-wrapper::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.5);
+      border-radius: 5px;
+    }
+    
+    .table-wrapper::-webkit-scrollbar-thumb:hover {
+      background: rgba(255,255,255,0.7);
+    }
+    
     table { 
       width: 100%; 
+      min-width: 600px; /* Ensures table maintains minimum readable width */
       border-collapse: separate;
       border-spacing: 0;
-      margin-top: 15px; 
       background: rgba(255,255,255,0.95);
       border-radius: 8px;
       overflow: hidden;
@@ -479,19 +506,21 @@
   {% if counts %}
   <div class="table-container">
     <h2>Current Counts</h2>
-    <table>
-      <thead><tr><th>Player</th><th>Count</th><th>Deviation</th></tr></thead>
-      <tbody>
-        {# ENSURE the order matches Targets: iterate player_names, look up counts/deviation #}
-        {% for name in player_names %}
-        <tr>
-          <td>{{ name }}</td>
-          <td>{{ counts.get(name, 0) }}</td>
-          <td>{{ '%.2f'|format(deviation.get(name, 0)) }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>Player</th><th>Count</th><th>Deviation</th></tr></thead>
+        <tbody>
+          {# ENSURE the order matches Targets: iterate player_names, look up counts/deviation #}
+          {% for name in player_names %}
+          <tr>
+            <td>{{ name }}</td>
+            <td>{{ counts.get(name, 0) }}</td>
+            <td>{{ '%.2f'|format(deviation.get(name, 0)) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
     <p class="muted">Objective value: {{ obj_val }}</p>
     <p class="muted">Adjust targets above and click "Run Model" again to iterate.</p>
   </div>
@@ -500,38 +529,40 @@
   {% if schedule_data %}
   <div class="table-container">
     <h2>Generated Weekly Schedule</h2>
-    <table>
-      <tr>
-        <th>Player</th>
-        {% for week_num in range(M) %}
-          <th>Week {{ week_num + 1 }}</th>
-        {% endfor %}
-      </tr>
-      <tr>
-        <td>Player 1</td>
-        {% for week in schedule_data %}
-          <td>{{ week[0] }}</td>
-        {% endfor %}
-      </tr>
-      <tr>
-        <td>Player 2</td>
-        {% for week in schedule_data %}
-          <td>{{ week[1] }}</td>
-        {% endfor %}
-      </tr>
-      <tr>
-        <td>Player 3</td>
-        {% for week in schedule_data %}
-          <td>{{ week[2] }}</td>
-        {% endfor %}
-      </tr>
-      <tr>
-        <td>Player 4</td>
-        {% for week in schedule_data %}
-          <td>{{ week[3] }}</td>
-        {% endfor %}
-      </tr>
-    </table>
+    <div class="table-wrapper">
+      <table>
+        <tr>
+          <th>Player</th>
+          {% for week_num in range(M) %}
+            <th>Week {{ week_num + 1 }}</th>
+          {% endfor %}
+        </tr>
+        <tr>
+          <td>Player 1</td>
+          {% for week in schedule_data %}
+            <td>{{ week[0] }}</td>
+          {% endfor %}
+        </tr>
+        <tr>
+          <td>Player 2</td>
+          {% for week in schedule_data %}
+            <td>{{ week[1] }}</td>
+          {% endfor %}
+        </tr>
+        <tr>
+          <td>Player 3</td>
+          {% for week in schedule_data %}
+            <td>{{ week[2] }}</td>
+          {% endfor %}
+        </tr>
+        <tr>
+          <td>Player 4</td>
+          {% for week in schedule_data %}
+            <td>{{ week[3] }}</td>
+          {% endfor %}
+        </tr>
+      </table>
+    </div>
 
     <h3>Download the Schedule</h3>
     <form class="download-form" action="/download" method="POST" id="downloadForm">
